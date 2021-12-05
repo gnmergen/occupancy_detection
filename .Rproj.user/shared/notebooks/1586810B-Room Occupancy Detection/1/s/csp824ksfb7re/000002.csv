@@ -1,0 +1,3 @@
+"0","log_spec <- logistic_reg() %>%"
+"0","  set_engine(""glm"") %>%"
+"0","  set_mode(""classification"")"

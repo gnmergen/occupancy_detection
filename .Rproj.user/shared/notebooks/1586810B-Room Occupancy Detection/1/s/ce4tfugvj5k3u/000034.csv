@@ -1,0 +1,5 @@
+"0",""
+"0","occupancy %>%"
+"0","  ggplot(aes(x = Light, fill = Occupancy))+"
+"0","  geom_density()+"
+"0","  theme_minimal()"

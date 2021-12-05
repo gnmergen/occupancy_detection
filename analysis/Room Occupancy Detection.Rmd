@@ -1,0 +1,143 @@
+---
+title: "Room Occupancy Detection"
+author: "Charles Stuppard, Mergen Narangerel"
+date: "12/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.show = "hold",
+                      out.width = "50%",
+                      message = F)
+library(tidyverse)
+library(tidymodels)
+```
+
+```{r}
+occupancy <- read.csv("../data/occupancy_data.csv") %>%
+  mutate(Occupancy = as_factor(Occupancy))
+```
+
+```{r}
+occupancy %>%
+  count(Occupancy)
+
+occupancy %>%
+  select(where(is.numeric)) %>%
+  cor(use = 'complete.obs', method = "pearson")
+```
+
+```{r}
+skimr::skim(occupancy)
+```
+
+```{r}
+occupancy %>%
+  ggplot(aes(x = Temperature, color = Occupancy))+
+  geom_freqpoly(binwidth = 0.1)+
+  theme_minimal()
+
+occupancy %>%
+  ggplot(aes(x = CO2, color = Occupancy))+
+  geom_freqpoly(binwidth = 10)+
+  theme_minimal()
+
+occupancy %>%
+  ggplot(aes(x = Light, fill = Occupancy))+
+  geom_density()+
+  theme_minimal()
+```
+
+
+```{r splitting}
+set.seed(123)
+
+occ <- occupancy %>%
+  select(-date)
+
+occ_split <- initial_split(occ)
+occ_train <- training(occ_split)
+occ_test <- testing(occ_split)
+
+occ_folds <- vfold_cv(occ_train, v = 10, strata = Occupancy)
+```
+
+```{r log recipe}
+log_rec <- recipe(Occupancy ~ ., data = occ_train)
+```
+
+```{r log spec}
+log_spec <- logistic_reg() %>%
+  set_engine("glm") %>%
+  set_mode("classification")
+```
+
+```{r wflow}
+log_wflow <- workflow() %>%
+  add_recipe(log_rec) %>%
+  add_model(log_spec) %>%
+  fit_resamples(occ_folds)
+```
+
+```{r log fitting}
+log_wflow %>%
+  collect_metrics()
+```
+
+```{r svm rec}
+
+```
+
+```{r svm spec}
+
+```
+
+```{r svm wflow}
+
+```
+
+```{r svm fitting}
+
+```
+
+```{r xgb rec }
+
+```
+
+```{r xgb spec}
+
+```
+
+```{r xgb wflow}
+
+```
+
+```{r xgb fitting}
+
+```
+
+
+#### **Introduction**
+
+
+
+#### **Objective**
+
+
+
+#### **Data**
+
+
+
+#### **Methods**
+
+
+
+#### **Results**
+
+
+
+#### **Discussion**
+
+

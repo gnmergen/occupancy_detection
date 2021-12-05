@@ -1,0 +1,2 @@
+"0","occupancy <- read.csv(""../data/occupancy_data.csv"") %>%"
+"0","  mutate(Occupancy = as_factor(Occupancy))"
