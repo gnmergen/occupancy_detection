@@ -6,20 +6,23 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,
+knitr::opts_chunk$set(echo = FALSE,
+                      include = FALSE,
                       fig.show = "hold",
                       out.width = "50%",
                       message = F)
 library(tidyverse)
 library(tidymodels)
+library(doParallel)
+library(vip)
 ```
 
-```{r}
+```{r reading}
 occupancy <- read.csv("../data/occupancy_data.csv") %>%
   mutate(Occupancy = as_factor(Occupancy))
 ```
 
-```{r}
+```{r wrangling}
 occupancy %>%
   count(Occupancy)
 
@@ -28,11 +31,11 @@ occupancy %>%
   cor(use = 'complete.obs', method = "pearson")
 ```
 
-```{r}
+```{r skimmer}
 skimr::skim(occupancy)
 ```
 
-```{r}
+```{r plotting}
 occupancy %>%
   ggplot(aes(x = Temperature, color = Occupancy))+
   geom_freqpoly(binwidth = 0.1)+
@@ -48,7 +51,6 @@ occupancy %>%
   geom_density()+
   theme_minimal()
 ```
-
 
 ```{r splitting}
 set.seed(123)
@@ -102,19 +104,109 @@ log_wflow %>%
 ```
 
 ```{r xgb rec }
-
+xgb_rec <- recipe(Occupancy ~ ., data = occ_train)
 ```
 
 ```{r xgb spec}
+require(xgboost)
+xgb_spec <- boost_tree(
+  trees = 1000,
+  tree_depth = tune(),
+  min_n = tune(),
+  loss_reduction = tune(),
+  sample_size = tune(),
+  mtry = tune(),
+  learn_rate = tune()
+) %>%
+  set_engine('xgboost') %>%
+  set_mode('classification')
 
+xgb_spec
 ```
 
 ```{r xgb wflow}
+xgb_grid <- grid_latin_hypercube(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  sample_size = sample_prop(),
+  finalize(mtry(), occ_train),
+  learn_rate(),
+  size = 30
+)
 
+xgb_wflow <- workflow() %>%
+  add_recipe(xgb_rec) %>%
+  add_model(xgb_spec)
+
+xgb_wflow
 ```
 
-```{r xgb fitting}
+```{r xgb fitting, cache = TRUE, catch.path = "cache/"}
+cl_mergen <- makePSOCKcluster(detectCores())
+registerDoParallel(cl_mergen)
 
+set.seed(200)
+xgb_fit <- tune_grid(
+  xgb_wflow,
+  resamples = occ_folds,
+  grid = xgb_grid,
+  control = control_grid(save_pred = TRUE)
+)
+```
+
+```{r xgb results}
+xgb_fit %>%
+  collect_metrics() %>%
+  filter(.metric == 'roc_auc') %>%
+  select(mean, mtry:sample_size) %>%
+  pivot_longer(mtry:sample_size,
+               values_to = 'value',
+               names_to = 'parameter') %>%
+  ggplot(aes(x = value, y = mean, color = parameter)) +
+  geom_point(alpha = 0.7, show.legend = FALSE)+
+  facet_wrap(~parameter, scales = 'free_x') +
+  labs(x = NULL, y = 'Area Under Curve')+
+  theme_minimal()
+```
+
+```{r showing results}
+xgb_fit %>%
+  show_best(metric = 'accuracy')
+
+xgb_best <- xgb_fit %>%
+  select_best('accuracy')
+
+xgb_final <- finalize_workflow(xgb_wflow, xgb_best)
+
+xgb_final %>%
+  fit(data = occ_train) %>%
+  augment(new_data = occ_train) %>%
+  conf_mat(truth = Occupancy, estimate = .pred_class) %>%
+  autoplot('heatmap') +
+  scale_fill_gradient(low = 'pink', high = 'royalblue')
+
+xgb_final %>%
+  fit(data = occ_train) %>%
+  extract_fit_parsnip() %>%
+  vip(geom = 'point')+
+  theme_minimal()
+
+xgb_final
+```
+
+```{r test set}
+xgb_final_test <- last_fit(xgb_final, occ_split)
+```
+
+```{r test visual}
+collect_metrics(xgb_final_test)
+
+
+xgb_final_test$.predictions[[1]] %>%
+  conf_mat(Occupancy, .pred_class) %>%
+  autoplot('heatmap')+
+  scale_fill_gradient(low = 'pink', high = 'royalblue')
 ```
 
 
@@ -141,3 +233,8 @@ log_wflow %>%
 #### **Discussion**
 
 
+#### **Appendix**
+
+```{r show-code, ref.label= knitr::all_labels(), echo=TRUE, eval=FALSE, include=TRUE}
+
+```

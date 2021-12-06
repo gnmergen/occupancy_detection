@@ -1,0 +1,34 @@
+"0","cl_mergen <- makePSOCKcluster(detectCores())"
+"0","registerDoParallel(cl_mergen)"
+"0",""
+"0","set.seed(200)"
+"0","xgb_fit <- tune_grid("
+"0","  xgb_wflow,"
+"0","  resamples = occ_folds,"
+"0","  grid = xgb_grid,"
+"0","  control = control_grid(save_pred = TRUE)"
+"0",")"
+"2","Warning in names :"
+"2"," closing unused connection 10 (<-MSI:11941)
+"
+"2","Warning in names :"
+"2"," closing unused connection 9 (<-MSI:11941)
+"
+"2","Warning in names :"
+"2"," closing unused connection 8 (<-MSI:11941)
+"
+"2","Warning in names :"
+"2"," closing unused connection 7 (<-MSI:11941)
+"
+"2","Warning in names :"
+"2"," closing unused connection 6 (<-MSI:11941)
+"
+"2","Warning in names :"
+"2"," closing unused connection 5 (<-MSI:11941)
+"
+"2","Warning in names :"
+"2"," closing unused connection 4 (<-MSI:11941)
+"
+"2","Warning in names :"
+"2"," closing unused connection 3 (<-MSI:11941)
+"

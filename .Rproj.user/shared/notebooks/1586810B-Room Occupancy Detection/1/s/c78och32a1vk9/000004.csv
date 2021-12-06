@@ -1,0 +1,6 @@
+"0",""
+"0",""
+"0","xgb_final_test$.predictions[[1]] %>%"
+"0","  conf_mat(Occupancy, .pred_class) %>%"
+"0","  autoplot('heatmap')+"
+"0","  scale_fill_gradient(low = 'pink', high = 'royalblue')"
