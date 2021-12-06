@@ -1,0 +1,5 @@
+"0",""
+"0","occupancy %>%"
+"0","  ggplot(aes(x = Light, color = Occupancy))+"
+"0","  geom_freqpoly(binwidth = 10)+"
+"0","  theme_minimal()"

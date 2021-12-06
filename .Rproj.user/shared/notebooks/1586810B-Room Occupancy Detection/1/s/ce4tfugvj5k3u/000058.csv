@@ -1,4 +1,4 @@
 "0","occupancy %>%"
 "0","  ggplot(aes(x = Temperature, color = Occupancy))+"
-"0","  geom_freqpoly(binwidth = 0.1)+"
+"0","  geom_freqpoly(binwidth = 0.2)+"
 "0","  theme_minimal()"

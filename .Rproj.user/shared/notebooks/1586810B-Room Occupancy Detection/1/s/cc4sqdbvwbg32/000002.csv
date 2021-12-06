@@ -1,4 +1,0 @@
-"0","log_wflow <- workflow() %>%"
-"0","  add_recipe(log_rec) %>%"
-"0","  add_model(log_spec) %>%"
-"0","  fit_resamples(occ_folds)"
