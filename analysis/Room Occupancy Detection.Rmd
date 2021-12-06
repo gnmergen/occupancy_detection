@@ -90,33 +90,19 @@ summary(log_fit)
 ```
 
 ```{r svm rec}
-svm_rec <- recipe(Occupancy ~ ., data = occ_train) %>% 
-  step_normalize(all_numeric_predictors())
 
 ```
 
 ```{r svm spec}
-svm_lin_spec <- svm_linear() %>%
-  set_mode("classification") %>%
-  set_engine("kernlab")
 
 ```
 
 ```{r svm wflow}
-svm_wf <- workflow(svm_rec, svm_lin_spec) 
 
 ```
 
 ```{r svm fitting}
-svm_fit <- fit(svm_wf, data = occ_train)
 
-```
-
-```{r svm heatmap}
-svm_fit %>%
-  augment(new_data = occ_train) %>%
-  conf_mat(Occupancy, .pred_class) %>%
-  autoplot(type = "heatmap")
 ```
 
 ```{r xgb rec }
@@ -300,7 +286,6 @@ validation samples.
 
 We are tuning most of our hyperparameters inside an exhaustive latin hypercube
 sampling method. We were mindful of overfitting whilst tuning `tree_depth`. 
-
 
 ```{r ref6, ref.label = "xgb spec", include = TRUE}
 
