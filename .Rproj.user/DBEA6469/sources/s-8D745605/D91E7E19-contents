@@ -287,7 +287,6 @@ validation samples.
 We are tuning most of our hyperparameters inside an exhaustive latin hypercube
 sampling method. We were mindful of overfitting whilst tuning `tree_depth`. 
 
-
 ```{r ref6, ref.label = "xgb spec", include = TRUE}
 
 ```
