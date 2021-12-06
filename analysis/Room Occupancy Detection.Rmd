@@ -90,20 +90,40 @@ summary(log_fit)
 ```
 
 ```{r svm rec}
+svm_rec <- recipe(Occupancy ~ ., data = occ_train) %>% 
+  step_normalize(all_numeric_predictors())
 
 ```
 
 ```{r svm spec}
-
+svm_lin_spec <- svm_linear() %>%
+  set_mode("classification") %>%
+  set_engine("kernlab")
 ```
 
 ```{r svm wflow}
-
+svm_wf <- workflow(svm_rec, svm_lin_spec) 
 ```
 
 ```{r svm fitting}
+svm_fit <- fit(svm_wf, data = occ_train)
+```
+
+```{r svm results}
+
+svm_fit %>%
+  augment(new_data = occ_train) %>%
+  conf_mat(Occupancy, .pred_class) %>%
+  autoplot(type = "heatmap") +
+  scale_fill_gradient(low = 'pink', high = 'royalblue')
+
+augment(svm_fit, occ_train) %>%
+  accuracy(truth = Occupancy, estimate = .pred_class)
+
 
 ```
+
+
 
 ```{r xgb rec }
 xgb_rec <- recipe(Occupancy ~ ., data = occ_train)
@@ -228,7 +248,7 @@ The model optimizes loss functions by using gradient descent which moves in
 the direction of steepest (thus most efficient) descent which minimizes the 
 error of ground truth vs prediction (Chong, Zak p131). 
 
-From the given dataset `xgboost` was able to produce high performing results.
+From the given dataset `xgboost` was able to produce high performing results. 
 
 #### **Objective**
 
@@ -299,11 +319,58 @@ sampling method. We were mindful of overfitting whilst tuning `tree_depth`.
 
 #### **Results**
 
+The SVM model correctly predicted 98.9% of variables. However, it was the lowest
+performing of the models used:
+
+```{r ref8, ref.label = "svm results", include = TRUE}
+
+```
+
+The `xgboost` model was fitted to the training set: 
+
+```{r ref9, ref.label = "xgb results", include = TRUE}
+
+```
+
+The model performance improved upon the svm model. `Light` is determined to be 
+the most impactful predictor. 
+
+```{r ref10, ref.label = "showing results", include = TRUE, warning=FALSE}
+
+```
+
+Lastly, the best `xgboost` model was fitted to the training data, resulting in 
+99.1% prediction accuracy:
+
+```{r ref11, ref.label = "test visual", include = TRUE}
+
+```
 
 
-#### **Discussion**
+#### **Reflection**
+
+The `svm` and `xgboost` models performed well on the given dataset with an 
+estimated error rate under 3%. Testing the models on a larger, scalable data 
+set would be beneficial in attempting to further optimize the model, although 
+the results would likely hold. There are several possibilities for next steps 
+and future research. An important consideration is the application of the room 
+sensors and their sensitivity requirement. Further research could explore the 
+minimum and/or maximum values that trigger detection and determine the threshold
+of what classifies as a person, as opposed to a child or large animal. `Light` 
+was the most important factor, so it may be worth looking into how the sensors 
+perform in the absence of light. Alternatively, would the models perform the 
+same with *only* the light variable. Due to time constraints, neural networks 
+and deep learning classification methods were not used. 
 
 
+#### **References**
+
+- Edwin K. P. Chong, Stanislaw H. Zak (2013). An Introduction to Optimization 
+(4th Ed.). John Wiley & Sons 
+https://books.google.com/books/about/An_Introduction_to_Optimization.html?id=8J_ev5ihKEoC
+
+- Chen T., Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. DOI 
+https://dl.acm.org/doi/10.1145/2939672.2939785
 
 #### **Appendix**
 
