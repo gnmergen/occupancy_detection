@@ -255,6 +255,29 @@ From the given dataset `xgboost` was able to produce high performing results.
 The objective of our model is to be able to accurately detect the presence of a
 person given updated information from the sensors on the test data. 
 
+$$
+F_i(x) = F_{i-1}(x)+f_i(x)
+$$
+
+xgBoost creates new learners that predict residual errors of its parent model
+sequentially to improve the overall performance of the model. Weak learners
+that have good performance have higher vote or weight in deciding the final
+ensemble model. 
+
+The loss function is Gradient Descent which tries to find the direction of 
+steepest descent of that reduces error term of the model. Unlike a neural 
+network the weights are updated on the next predictor thereby learning from
+its mistake. 
+
+$w$ is weight and $n$ being our learning rate and loss being $L$.
+$$
+w = w - n \delta w
+$$
+
+$$
+\delta w = dL/dw
+$$
+
 #### **Data**
 
 The original dataset was obtained from the UCI Machine Learning Repository with
