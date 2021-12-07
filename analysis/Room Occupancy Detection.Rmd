@@ -362,7 +362,7 @@ the most impactful predictor.
 
 ```
 
-Lastly, the best `xgboost` model was fitted to the training data, resulting in 
+Lastly, the best `xgboost` model was fitted to the testing data, resulting in 
 99.1% prediction accuracy:
 
 ```{r ref11, ref.label = "test visual", include = TRUE}
