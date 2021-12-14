@@ -1,0 +1,149 @@
+---
+title: "XGBoost v2"
+author: "Mergen, Charles"
+date: "12/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = F,
+                      fig.show = "hold",
+                      out.width = "50%")
+library(tidymodels)
+library(tidyverse)
+library(xgboost)
+library(vip)
+library(doParallel)
+```
+
+#### **XGBoost Without Light Variable**
+
+*Setup*
+
+```{r}
+occupancy <- read.csv("../data/occupancy_data.csv") %>%
+  mutate(Occupancy = as_factor(Occupancy)) %>%
+  select(-date)
+```
+
+```{r}
+set.seed(123)
+occ_split <- initial_split(occupancy)
+occ_train <- training(occ_split)
+occ_test <- testing(occ_split)
+```
+
+```{r}
+set.seed(200)
+occ_folds <- vfold_cv(occ_train, v= 10, strata = Occupancy)
+```
+
+*Workflow and Specifications*
+
+```{r}
+xgb_rec <- recipe(Occupancy ~ Temperature + Humidity + CO2 + 
+                    HumidityRatio,  data = occ_train) 
+
+xgb_spec <- boost_tree(
+  trees = 1000,
+  tree_depth = tune(),
+  min_n = tune(),
+  loss_reduction = tune(),
+  sample_size = tune(),
+  mtry = tune(),
+  learn_rate = tune()
+) %>%
+  set_engine('xgboost') %>%
+  set_mode('classification')
+
+xgb_spec
+
+xgb_grid <- grid_latin_hypercube(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  sample_size = sample_prop(),
+  finalize(mtry(), occ_train),
+  learn_rate(),
+  size = 30
+)
+
+xgb_wflow <- workflow() %>%
+  add_recipe(xgb_rec) %>%
+  add_model(xgb_spec)
+```
+
+```{r xgb2 fitting, cache = TRUE, catch.path = "cache/"}
+cl_mergen <- makePSOCKcluster(detectCores())
+registerDoParallel(cl_mergen)
+
+set.seed(200)
+xgb_fit <- tune_grid(
+  xgb_wflow,
+  resamples = occ_folds,
+  grid = xgb_grid,
+  control = control_grid(save_pred = TRUE)
+)
+```
+
+```{r}
+xgb_fit %>%
+  collect_metrics()
+
+xgb_fit %>%
+  show_best(metric = 'roc_auc')
+
+xgb_best <-xgb_fit %>%
+  select_best(metric = 'roc_auc')
+```
+
+
+```{r}
+xgb_final <- finalize_workflow(xgb_wflow, xgb_best)
+
+xgb_final %>%
+  fit(data = occ_train) %>%
+  augment(new_data = occ_train) %>%
+  conf_mat(truth = Occupancy, estimate = .pred_class) %>%
+  autoplot('heatmap') +
+  scale_fill_gradient(low = 'pink', high = 'royalblue')
+
+xgb_final %>%
+  fit(data = occ_train) %>%
+  extract_fit_parsnip() %>%
+  vip(geom = 'point')+
+  theme_minimal()
+
+xgb_final
+```
+```{r}
+xgb_final_test <- last_fit(xgb_final, occ_split)
+```
+
+
+
+```{r}
+collect_metrics(xgb_final_test)
+
+
+xgb_final_test$.predictions[[1]] %>%
+  conf_mat(Occupancy, .pred_class) %>%
+  autoplot('heatmap')+
+  scale_fill_gradient(low = 'pink', high = 'cyan')
+```
+
+```{r}
+require(corrplot)
+
+occ_num_only <- occupancy %>%
+  select(where(is.numeric))
+
+occ_num_only <- cor(occ_num_only)
+
+occ_num_only
+```
+
+```{r}
+corrplot(occ_num_only, method = 'number')
+```
