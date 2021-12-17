@@ -1,0 +1,173 @@
+---
+title: "occupancy SVM code"
+author: "Charles Stuppard"
+date: "12/5/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+library(tidymodels)
+library(kernlab)
+
+```
+
+```{r}
+occupancy <- read.delim("datatraining.txt", sep = ",") 
+
+occupancy$Occupancy <- as_factor(occupancy$Occupancy)
+
+
+set.seed(123)
+occ <- occupancy %>%
+  select(-date)
+
+occ_split <- initial_split(occ)
+occ_train <- training(occ_split)
+occ_test <- testing(occ_split)
+
+occ_folds <- vfold_cv(occ_train, v = 10, strata = Occupancy)
+
+```
+
+
+```{r svm 1, svm initial}
+svm_lin_spec <- svm_linear() %>%
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+svm_lin_fit <- fit(svm_lin_spec, Occupancy ~ ., data = occ_train)
+
+
+svm_lin_fit %>%
+  augment(new_data = occ_train) %>%
+  conf_mat(Occupancy, .pred_class) %>%
+  autoplot(type = "heatmap") +
+  scale_fill_gradient(low = 'pink', high = 'royalblue')
+
+
+
+svm_lin_fit %>%
+  augment(new_data = occ_train) %>%
+  accuracy(Occupancy, .pred_class)
+
+
+
+```
+
+```{r svm with light, warning = FALSE, message=FALSE}
+
+svm_rec <- 
+  recipe(Occupancy ~ ., data = occ_train) %>%
+  step_normalize(all_numeric_predictors())
+
+svm_poly_spec <- svm_poly(cost = tune()) %>%
+   set_mode("classification") %>%
+   set_engine("kernlab")
+
+svm_tune <- workflow() %>% 
+   add_model(svm_poly_spec %>% set_args(cost = tune())) %>%    add_recipe(svm_rec)
+
+# tune
+
+svm_wf2 <- workflow() %>% 
+  add_model(svm_poly_spec %>%  set_args(cost = tune())) %>% 
+  add_recipe(svm_rec)
+  
+param_grid <- grid_regular(cost(), levels = 10)
+ 
+
+svm_tune <-tune_grid(
+  svm_wf2,
+  resamples = occ_folds,
+  grid = param_grid
+ )
+
+
+svm_metrics <- svm_tune %>%
+  collect_metrics()
+ 
+autoplot(svm_tune)
+
+best <- select_best(svm_tune)
+
+svm_final <- finalize_workflow(svm_wf2, best)
+
+svm_final_fit <- fit(svm_final, data = occ_test)
+
+augment(svm_final_fit, new_data = occ_test) %>%
+  accuracy(truth = Occupancy, estimate = .pred_class)
+
+augment(svm_final_fit, new_data = occ_test) %>%
+  conf_mat(truth = Occupancy, estimate = .pred_class)
+
+svm_final_fit %>% 
+  augment(new_data = occ_test) %>%
+  conf_mat(Occupancy, .pred_class) %>%
+  autoplot('heatmap') +
+  scale_fill_gradient(low = 'pink', high = 'royalblue')
+
+
+```
+
+
+
+```{r no light, warning=FALSE, message=FALSE}
+
+svm_rec_NL <- 
+  recipe(Occupancy ~ Temperature + Humidity + CO2 + HumidityRatio, 
+         data = occ_train) %>%
+  step_normalize(all_numeric_predictors())
+
+
+
+svm_poly_spec_NL <- svm_poly(cost = tune()) %>%
+   set_mode("classification") %>%
+   set_engine("kernlab")
+
+# tune
+
+svm_wf2_NL <- workflow() %>% 
+  add_model(svm_poly_spec_NL %>%  set_args(cost = tune())) %>% 
+  add_recipe(svm_rec_NL)
+  
+param_grid <- grid_regular(cost(), levels = 10)
+ 
+
+svm_tune_NL <-tune_grid(
+  svm_wf2_NL,
+  resamples = occ_folds,
+  grid = param_grid
+ )
+
+
+svm_metrics_NL <- svm_tune_NL %>%
+  collect_metrics()
+ 
+autoplot(svm_tune_NL)
+
+best_NL <- select_best(svm_tune_NL)
+ 
+svm_final_NL <- finalize_workflow(svm_wf2_NL, best_NL)
+
+svm_final_fit_NL <- fit(svm_final_NL, data = occ_test)
+
+augment(svm_final_fit_NL, new_data = occ_test) %>%
+  accuracy(truth = Occupancy, estimate = .pred_class)
+
+# augment(svm_final_fit_NL, new_data = occ_test) %>%
+#   conf_mat(truth = Occupancy, estimate = .pred_class)
+
+svm_final_fit_NL %>% 
+  augment(new_data = occ_train) %>%
+  conf_mat(Occupancy, .pred_class) %>%
+  autoplot('heatmap') +
+  scale_fill_gradient(low = 'pink', high = 'cyan')
+
+```
+
+
+
